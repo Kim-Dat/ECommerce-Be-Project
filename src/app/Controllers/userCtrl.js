@@ -21,7 +21,6 @@ class UserController {
     async loginUserCtrl(req, res, next) {
         const { email, password } = req.body;
         const findUser = await userModel.findOne({ email });
-        console.log(findUser);
         if (findUser && (await findUser.isPasswordMatched(password))) {
             const refreshToken = await generateRefreshToken(findUser._id);
             const updateUser = await userModel.findByIdAndUpdate(
@@ -177,8 +176,6 @@ class UserController {
         validateMongodbId(_id);
         const { password } = req.body;
         const user = await userModel.findById({ _id });
-        console.log(user.password);
-        console.log(password);
         if (password) {
             user.password = password;
             const updatePassword = await user.save();

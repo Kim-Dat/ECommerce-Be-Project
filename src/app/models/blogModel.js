@@ -18,7 +18,7 @@ const blogSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
-        isLike: {
+        isLiked: {
             type: Boolean,
             default: false,
         },
@@ -26,11 +26,11 @@ const blogSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        Likes: {
+        likes: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "user",
         },
-        DisLikes: {
+        disLikes: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "user",
         },

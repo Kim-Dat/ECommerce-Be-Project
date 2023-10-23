@@ -2,6 +2,7 @@ const validateMongodbId = require("../../utils/validateMongodbId");
 const productModel = require("../models/productModel");
 const slugify = require("slugify");
 class ProductController {
+    /* [POST] api/product/*/
     async createProductCtrl(req, res) {
         try {
             if (req.body.title) {
@@ -19,6 +20,7 @@ class ProductController {
             throw new Error(error);
         }
     }
+    /* [PUT] api/product/:id*/
     async updateProduct(req, res) {
         try {
             if (req.body.title) {
@@ -32,6 +34,7 @@ class ProductController {
             throw new Error(error);
         }
     }
+    /* [DELETE] api/product/:id*/
     async deleteProduct(req, res) {
         try {
             const deleteProduct = await productModel.findByIdAndDelete({ _id: req.params.id });
@@ -40,6 +43,7 @@ class ProductController {
             throw new Error(error);
         }
     }
+    /* [GET] api/product/:id*/
     async getAProduct(req, res) {
         validateMongodbId(req.params.id);
         try {
@@ -49,6 +53,7 @@ class ProductController {
             throw new Error(error);
         }
     }
+    /* [PUT] api/product/*/
     async getAllProduct(req, res) {
         try {
             /* filtering */

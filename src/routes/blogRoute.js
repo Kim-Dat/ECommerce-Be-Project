@@ -1,0 +1,11 @@
+const express = require("express");
+const router = express.Router();
+const asyncHandler = require("express-async-handler");
+const { authMiddleware, isAdmin } = require("../app/middlewares/authMiddleware");
+const blogController = require("../app/Controllers/blogCtrl");
+router.post("/", authMiddleware, isAdmin, asyncHandler(blogController.createBlog));
+router.get("/:id", asyncHandler(blogController.getABlog));
+router.get("/", asyncHandler(blogController.getAllBlog));
+router.put("/:id", authMiddleware, isAdmin, asyncHandler(blogController.updateBlog));
+router.delete("/:id", authMiddleware, isAdmin, asyncHandler(blogController.deleteBlog));
+module.exports = router;
