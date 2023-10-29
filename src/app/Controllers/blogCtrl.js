@@ -19,7 +19,7 @@ class BlogController {
         const { id } = req.params;
         validateMongodbId(id);
         try {
-            const getBlog = await blogModel.findById({ _id: id });
+            const getBlog = await blogModel.findById({ _id: id }).populate("likes").populate("disLikes");
             const updateView = await blogModel.findByIdAndUpdate(
                 { _id: id },
                 {
@@ -70,23 +70,111 @@ class BlogController {
             throw new Error(error);
         }
     }
-    /* [PATCH] */
-    async likeBlog(req, res) {
+    /* [PUT] api/blog/likes*/
+    async likeTheBlog(req, res) {
         const { blogId } = req.body;
         validateMongodbId(blogId);
         try {
+            /*Tìm Blog muốn thích*/
             const blog = await blogModel.findById({ _id: blogId });
-            const userBlogId = req?.user?._id;
+            /*lấy id của người dùng đã đăng nhập*/
+            const loginUserId = req?.user?._id;
+            /*Kiểm tra người dùng đã thích chưa*/
             const isLiked = blog?.isLiked;
-            const alreadyDisliked = blog?.disLikes?.find();
+            /*Kiểm tra người dùng đã từng không thích trước đó chưa*/
+            const alreadyDisliked = blog?.disLikes?.find((userId) => userId.toString() === loginUserId?.toString());
             if (alreadyDisliked) {
                 const blog = await blogModel.findByIdAndUpdate(
                     { _id: blogId },
                     {
-                        $pull: { disLikes: userBlogId },
-                        isDisLiked: true,
+                        $pull: { disLikes: loginUserId },
+                        isDisLiked: false,
+                    },
+                    {
+                        new: true,
                     }
                 );
+                res.json(blog);
+            }
+            if (isLiked) {
+                const blog = await blogModel.findByIdAndUpdate(
+                    { _id: blogId },
+                    {
+                        $pull: { likes: loginUserId },
+                        isLiked: false,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(blog);
+            } else {
+                const blog = await blogModel.findByIdAndUpdate(
+                    { _id: blogId },
+                    {
+                        $push: { likes: loginUserId },
+                        isLiked: true,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(blog);
+            }
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    /* [PUT] api/blog/dislikes*/
+    async disLikeTheBlog(req, res) {
+        const { blogId } = req.body;
+        validateMongodbId(blogId);
+        try {
+            /*Tìm Blog muốn thích*/
+            const blog = await blogModel.findById({ _id: blogId });
+            /*lấy id của người dùng đã đăng nhập*/
+            const loginUserId = req?.user?._id;
+            /*Kiểm tra người dùng đã không thích chưa*/
+            const isDisLiked = blog?.isDisLiked;
+            /*Kiểm tra người dùng đã từng thích trước đó chưa*/
+            const alreadyLiked = blog?.likes?.find((userId) => userId.toString() === loginUserId?.toString());
+            if (alreadyLiked) {
+                const blog = await blogModel.findByIdAndUpdate(
+                    { _id: blogId },
+                    {
+                        $pull: { likes: loginUserId },
+                        isLiked: false,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(blog);
+            }
+            if (isDisLiked) {
+                const blog = await blogModel.findByIdAndUpdate(
+                    { _id: blogId },
+                    {
+                        $pull: { disLikes: loginUserId },
+                        isDisLiked: false,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(blog);
+            } else {
+                const blog = await blogModel.findByIdAndUpdate(
+                    { _id: blogId },
+                    {
+                        $push: { disLikes: loginUserId },
+                        isDisLiked: true,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(blog);
             }
         } catch (error) {
             throw new Error(error);

@@ -1,6 +1,8 @@
 const validateMongodbId = require("../../utils/validateMongodbId");
 const productModel = require("../models/productModel");
 const slugify = require("slugify");
+const cloudinaryUploadImg = require("../../utils/cloudinary");
+const userModel = require("../models/userModel");
 class ProductController {
     /* [POST] api/product/*/
     async createProductCtrl(req, res) {
@@ -93,6 +95,125 @@ class ProductController {
             res.json(product);
         } catch (error) {
             throw new Error(error);
+        }
+    }
+
+    /* [] */
+    async addToWishList(req, res) {
+        const { prodId } = req.body;
+        const { _id } = req.user;
+        try {
+            const user = await userModel.findById({ _id });
+            const alreadyAdded = user?.wishlist?.find((userId) => userId.toString() === prodId.toString());
+            if (alreadyAdded) {
+                const user = await userModel.findByIdAndUpdate(
+                    { _id },
+                    {
+                        $pull: { wishlist: prodId },
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(user);
+            } else {
+                const user = await userModel.findByIdAndUpdate(
+                    { _id },
+                    {
+                        $push: { wishlist: prodId },
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(user);
+            }
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+
+    async rating(req, res) {
+        const { _id } = req.user;
+        const { star, prodId } = req.body;
+        try {
+            const product = await productModel.findById({ _id: prodId });
+            if (!product) {
+                return res.status(404).json({ message: "product not found !!!" });
+            }
+            const alreadyRated = product?.ratings?.find((userId) => userId.postedby.toString() === _id.toString());
+            if (alreadyRated) {
+                const updateRating = await productModel.updateOne(
+                    {
+                        ratings: { $elemMatch: alreadyRated },
+                    },
+                    {
+                        $set: { "ratings.$.star": star },
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(updateRating);
+            } else {
+                const ratedProduct = await productModel.findByIdAndUpdate(
+                    { _id: prodId },
+                    {
+                        $push: {
+                            ratings: {
+                                star,
+                                postedby: _id,
+                            },
+                        },
+                    }
+                );
+                res.json(ratedProduct);
+            }
+            let totalRating = product.ratings.length;
+            let ratingSum = product.ratings.map((rating) => rating.star).reduce((acc, arr) => acc + arr, 0);
+            let actualRating = Math.round(ratingSum / totalRating);
+            const finalProduct = await productModel.findByIdAndUpdate(
+                { _id: prodId },
+                {
+                    totalrating: actualRating,
+                },
+                {
+                    new: true,
+                }
+            );
+            console.log(finalProduct);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+
+    async uploadImages(req, res) {
+        const { id } = req.params;
+        validateMongodbId(id);
+        try {
+            const uploader = (path) => cloudinaryUploadImg(path, " images");
+            const urls = [];
+            const files = req.files;
+            for (const file of files) {
+                const { path } = file;
+                const newPath = await uploader(path);
+                urls.push(newPath)
+            }
+            console.log("URLS :", urls)
+            const findProduct = await productModel.findByIdAndUpdate(
+                { _id: id },
+                {
+                    images: urls.map((file) => file),
+                },
+                {
+                    new: true,
+                }
+            );
+            await findProduct.save()
+            res.json(findProduct);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Internal Server Error" });
         }
     }
 }

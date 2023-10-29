@@ -38,9 +38,7 @@ var productSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
-        image: {
-            type: String,
-        },
+        images: [],
         color: {
             type: String,
             required: true,
@@ -54,6 +52,10 @@ var productSchema = new mongoose.Schema(
                 },
             },
         ],
+        totalrating: {
+            type: String,
+            default: 0,
+        },
     },
     {
         timestamps: true,

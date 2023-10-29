@@ -26,21 +26,22 @@ const blogSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        likes: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "user",
-        },
-        disLikes: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "user",
-        },
-        image: {
-            type: String,
-            default: "https://www.lucasweb.it/upload/blog/CAT-1551275824.jpg",
-        },
+        likes: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+            },
+        ],
+        disLikes: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+            },
+        ],
+        images: [],
         author: {
             type: String,
-            default: "admin",
+            default: "Admin",
         },
     },
     {

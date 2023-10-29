@@ -1,10 +1,18 @@
-const authRoute = require("./authRoute");
-const productRoute = require("./productRoute");
-const blogRoute = require("./blogRoute")
+const authRouter = require("./authRoute");
+const productRouter = require("./productRoute");
+const blogRouter = require("./blogRoute");
+const prodCategoryRouter = require("./prodCategoryRoute");
+const blogCategoryRouter = require("./blogCategoryRoute");
+const brandRoute = require("./brandRoute")
+const couponRouter = require("./couponRoute")
 function routes(app) {
-    app.use("/api/user", authRoute);
-    app.use("/api/product", productRoute);
-    app.use("/api/blog", blogRoute);
+    app.use("/api/user", authRouter);
+    app.use("/api/product", productRouter);
+    app.use("/api/blog", blogRouter);
+    app.use("/api/prodcategory", prodCategoryRouter);
+    app.use("/api/blogcategory", blogCategoryRouter);
+    app.use("/api/brand", brandRoute);
+    app.use("/api/coupon", couponRouter);
 }
 
 module.exports = routes;
