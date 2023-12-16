@@ -4,9 +4,11 @@ const cookieParser = require("cookie-parser");
 const routes = require("./routes/index");
 const morgan = require("morgan");
 const { dbConnect } = require("./config/dbConnect");
+const cors = require("cors")
 const { notFound, errorHandler } = require("./app/middlewares/errorHandler");
 const app = express();
 app.use(express.json());
+app.use(cors({credentials: true,}))
 app.use(express.urlencoded({ extended: false }));
 const PORT = process.env.PORT || 4000;
 dbConnect();

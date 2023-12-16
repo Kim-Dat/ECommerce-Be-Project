@@ -1,5 +1,10 @@
 const { generateToken } = require("../../config/jwToken");
 const userModel = require("../models/userModel");
+const productModel = require("../models/productModel");
+const cartModel = require("../models/cartModel");
+const couponModel = require("../models/couponModel");
+const orderModel = require("../models/orderModel");
+const uniqid = require("uniqid");
 const validateMongodbId = require("../../utils/validateMongodbId");
 const { generateRefreshToken } = require("../../config/refreshToken");
 const jwToken = require("jsonwebtoken");
@@ -14,14 +19,18 @@ class UserController {
             throw new Error("User already exists");
         } else {
             const newUser = await userModel.create(req.body);
-            res.json({ message: "User created successfully", success: true, user: newUser });
+            res.json({
+                message: "User created successfully",
+                success: true,
+                user: newUser,
+            });
         }
     }
     /* [GET] api/user/login */
     async loginUserCtrl(req, res, next) {
         const { email, password } = req.body;
         const findUser = await userModel.findOne({ email });
-        if (findUser && (await findUser.isPasswordMatched(password))) {
+        if (findUser && (await findUser.isPasswordMatched(password)) && !findUser.isBlocked) {
             const refreshToken = await generateRefreshToken(findUser._id);
             const updateUser = await userModel.findByIdAndUpdate(
                 { _id: findUser._id },
@@ -32,11 +41,46 @@ class UserController {
                     new: true,
                 }
             );
-            res.cookie("refreshToken", refreshToken, { maxAge: 72 * 60 * 60 * 1000, httpOnly: true });
+            res.cookie("refreshToken", refreshToken, {
+                maxAge: 72 * 60 * 60 * 1000,
+                httpOnly: true,
+            });
             res.json({
                 _id: updateUser?._id,
-                firstname: updateUser?.firstname,
-                lastname: updateUser?.lastname,
+                firstName: updateUser?.firstName,
+                lastName: updateUser?.lastName,
+                email: updateUser?.email,
+                mobile: updateUser?.mobile,
+                token: generateToken(updateUser?._id),
+            });
+        } else {
+            throw new Error("Invalid Information !!!");
+        }
+    }
+    /* [GET] api/user/admin-login */
+    async loginAdmin(req, res, next) {
+        const { email, password } = req.body;
+        const findAdmin = await userModel.findOne({ email });
+        if (findAdmin.role !== "admin") throw new Error("Not an Admin");
+        if (findAdmin && (await findAdmin.isPasswordMatched(password))) {
+            const refreshToken = await generateRefreshToken(findAdmin._id);
+            const updateUser = await userModel.findByIdAndUpdate(
+                { _id: findAdmin._id },
+                {
+                    refreshToken,
+                },
+                {
+                    new: true,
+                }
+            );
+            res.cookie("refreshToken", refreshToken, {
+                maxAge: 72 * 60 * 60 * 1000,
+                httpOnly: true,
+            });
+            res.json({
+                _id: updateUser?._id,
+                firstName: updateUser?.firstName,
+                lastName: updateUser?.lastName,
                 email: updateUser?.email,
                 mobile: updateUser?.mobile,
                 token: generateToken(updateUser?._id),
@@ -63,6 +107,7 @@ class UserController {
     /* [GET] api/user/logout*/
     async logout(req, res) {
         const cookie = req.cookies;
+        console.log(cookie);
         if (!cookie?.refreshToken) throw new Error("No Refresh Token in Cookies");
         const refreshToken = cookie.refreshToken;
         const user = await userModel.findOne({ refreshToken });
@@ -87,10 +132,29 @@ class UserController {
             const updateUser = await userModel.findByIdAndUpdate(
                 { _id },
                 {
-                    firstname: req.body.firstname,
-                    lastname: req.body.lastname,
+                    firstName: req.body.firstName,
+                    lastName: req.body.lastName,
                     email: req.body.email,
                     mobile: req.body.mobile,
+                },
+                {
+                    new: true,
+                }
+            );
+            res.json(updateUser);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    /* [PUT]  api/user/save-address*/
+    async saveAddress(req, res) {
+        const { _id } = req.user;
+        validateMongodbId(_id);
+        try {
+            const updateUser = await userModel.findByIdAndUpdate(
+                { _id },
+                {
+                    address: req.body.address,
                 },
                 {
                     new: true,
@@ -124,30 +188,55 @@ class UserController {
     }
     /* [DELETE] api/user/:id */
     async deleteAUser(req, res) {
+        // const { userId } = req.body;
         const { id } = req.params;
         validateMongodbId(id);
         try {
-            const deleteAUser = await userModel.findByIdAndDelete({ _id: id });
-            res.json({ deleteAUser });
+            const deleteAUser = await userModel.findByIdAndDelete(id);
+            res.json(deleteAUser);
         } catch (error) {
             throw new Error(error);
         }
     }
-    /* [PATCH] api/user/block-user/:id */
+    /* [PATCH] api/user/block-user */
     async blockUser(req, res) {
-        const { id } = req.params;
-        validateMongodbId(id);
+        const { userId } = req.body;
+        validateMongodbId(userId);
         try {
-            const block = await userModel.findByIdAndUpdate(
-                { _id: id },
-                {
-                    isBlocked: true,
-                },
-                {
-                    new: true,
-                }
-            );
-            res.json(block);
+            const user = await userModel.findById(userId);
+
+            const alreadyBlocked = user.isBlocked;
+            if (alreadyBlocked) {
+                const updateUser = await userModel.findByIdAndUpdate(
+                    userId,
+                    {
+                        isBlocked: false,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(updateUser);
+            } else {
+                const updateUser = await userModel.findByIdAndUpdate(
+                    userId,
+                    {
+                        isBlocked: true,
+                    },
+                    {
+                        new: true,
+                    }
+                );
+                res.json(updateUser);
+            }
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    async getBlocks(req, res) {
+        try {
+            const getBlogs = await userModel.find({ isBlocked: true });
+            res.json(getBlogs);
         } catch (error) {
             throw new Error(error);
         }
@@ -171,6 +260,7 @@ class UserController {
             throw new Error(error);
         }
     }
+    /* [PATCH] api/user/password */
     async updatePassword(req, res) {
         const { _id } = req.user;
         validateMongodbId(_id);
@@ -184,6 +274,7 @@ class UserController {
             res.json(user);
         }
     }
+    /* [POST] api/user/forgot-password-token */
     async forgotPasswordToken(req, res) {
         const { email } = req.body;
         const user = await userModel.findOne({ email });
@@ -192,10 +283,9 @@ class UserController {
         }
         try {
             const token = await user.createPasswordResetToken();
-            console.log("forgot Token :", token);
             await user.save();
             const resetURL = `Hi, please follow this link to reset your password. This link is valid till 10 minutes from now
-            <a href="http://localhost:5000/api/user/reset-password/${token}">Click Here</a>
+            <a href="http://localhost:3000/reset-password/${token}">Click Here</a>
              `;
             const data = {
                 to: email,
@@ -209,6 +299,7 @@ class UserController {
             throw new Error(error);
         }
     }
+    /* [PATCH] api/user/reset-password/:token */
     async resetPassword(req, res) {
         try {
             const { password } = req.body;
@@ -229,6 +320,140 @@ class UserController {
         } catch (error) {
             throw new Error(error);
         }
+    }
+    /* [GET] api/user/wishlist */
+    async getWishList(req, res) {
+        const { _id } = req.user;
+        try {
+            const findUser = await userModel.findById(_id).populate("wishlists");
+            res.json(findUser);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    /* [POST] api/user/cart*/
+    async userCart(req, res) {
+        const { _id } = req.user;
+        validateMongodbId(_id);
+        const { productId, color, quantity, price } = req.body;
+
+        try {
+            const newCart = await new cartModel({
+                userId: _id,
+                productId: productId,
+                color: color,
+                quantity: quantity,
+                price: price,
+            }).save();
+            res.json(newCart);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    /* [GET] api/user/cart*/
+    async getUserCart(req, res) {
+        const { _id } = req.user;
+        validateMongodbId(_id);
+        try {
+            const cart = await cartModel.find({ userId: _id }).populate("productId").populate("color");
+            res.json(cart);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    /* [Delete] api/user/cart/:id*/
+    async removeProductFromCart(req, res) {
+        const { id } = req.params;
+        validateMongodbId(id);
+        try {
+            const deleteProductFromCart = await cartModel.findByIdAndDelete(id);
+            res.json(deleteProductFromCart);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+
+    async emptyCart(req, res) {
+        const { _id } = req.user;
+        validateMongodbId(_id);
+        try {
+            const emptyCart = await cartModel.deleteMany({ userId: _id });
+            res.json(emptyCart);
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+
+    async getMonthWiseOrderInCome(req, res) {
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        const currentYear = new Date().getFullYear();
+        const endDateList = [];
+
+        for (let index = 0; index < monthNames.length; index++) {
+            // Create a new date object for the first day of each month in the current year
+            const currentDate = new Date(currentYear, index, 1);
+
+            // Set the date to the end of the current month
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            currentDate.setDate(0);
+
+            // Format the date to match your requirement
+            const endDate = monthNames[currentDate.getMonth()] + " " + currentDate.getFullYear();
+            endDateList.push(endDate);
+        }
+
+        // Now you can use endDateList in your MongoDB query
+        const data = await orderModel.aggregate([
+            {
+                $match: {
+                    createdAt: {
+                        $lte: new Date(),
+                        $gte: new Date(endDateList[0]), // Use the first month's end date
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        month: "$month",
+                    },
+                    amount: { $sum: "$totalPriceAfterDiscount" },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+
+        res.json(data);
+    }
+
+    async getYearlyTotalOrders(req, res) {
+        let monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        let d = new Date();
+        let endDate = "";
+        d.setDate(1);
+        for (let index = 0; index < monthNames.length + 1; index++) {
+            d.setMonth(d.getMonth() - 1);
+            endDate = monthNames[d.getMonth()] + " " + d.getFullYear();
+        }
+        const data = await orderModel.aggregate([
+            {
+                $match: {
+                    createdAt: {
+                        $lte: new Date(),
+                        $gte: new Date(endDate),
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    count: { $sum: 1 },
+                    amount: { $sum: "$totalPriceAfterDiscount" },
+                },
+            },
+        ]);
+        res.json(data);
     }
 }
 

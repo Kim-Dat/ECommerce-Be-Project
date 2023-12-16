@@ -1,0 +1,11 @@
+const express = require("express");
+const router = express.Router();
+const colorController = require("../app/Controllers/colorCtrl");
+const asyncHandler = require("express-async-handler");
+const { authMiddleware, isAdmin } = require("../app/middlewares/authMiddleware");
+router.post("/", authMiddleware, isAdmin, asyncHandler(colorController.createColor));
+router.get("/", asyncHandler(colorController.getAllColor));
+router.get("/:id", asyncHandler(colorController.getAColor));
+router.put("/:id",authMiddleware, isAdmin, asyncHandler(colorController.updateColor));
+router.delete("/:id", authMiddleware, isAdmin, asyncHandler(colorController.deleteColor));
+module.exports = router;

@@ -4,11 +4,11 @@ const crypto = require("crypto");
 // Declare the Schema of the Mongo model
 const userSchema = new mongoose.Schema(
     {
-        firstname: {
+        firstName: {
             type: String,
             required: true,
         },
-        lastname: {
+        lastName: {
             type: String,
             required: true,
         },
@@ -38,13 +38,7 @@ const userSchema = new mongoose.Schema(
             type: Array,
             default: [],
         },
-        address: [
-            {
-                type: mongoose.Schema.ObjectId,
-                ref: "Address",
-            },
-        ],
-        wishlist: [
+        wishlists: [
             {
                 type: mongoose.Schema.ObjectId,
                 ref: "Product",
@@ -76,7 +70,7 @@ userSchema.methods.createPasswordResetToken = async function () {
     const resetToken = crypto.randomBytes(32).toString("hex");
     this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
     this.passwordResetExpires = Date.now() + 30 * 60 * 1000; //10 minuted
-    return resetToken
+    return resetToken;
 };
 
 //Export the model

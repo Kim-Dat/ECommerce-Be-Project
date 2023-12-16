@@ -20,6 +20,7 @@ class CouponController {
     }
     async updateCoupon(req, res) {
         const { id } = req.params;
+        console.log(id)
         validateMongodbId(id)
         try {
             const updateCoupon = await couponModel.findByIdAndUpdate({ _id: id }, req.body, {
@@ -36,6 +37,16 @@ class CouponController {
         try {
             const deleteCoupon = await couponModel.findByIdAndDelete({ _id: id });
             res.json(deleteCoupon)
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
+    async getCoupon(req, res){
+        const { id } = req.params;
+        validateMongodbId(id)
+        try {
+            const coupon = await couponModel.findById({ _id: id });
+            res.json(coupon)
         } catch (error) {
             throw new Error(error);
         }
